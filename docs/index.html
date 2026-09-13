@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>AMANDA.OLV // terminal</title>
+  <meta name="description" content="Terminal interativo da Amanda Pereira de Oliveira. Snake, memory e protocol rush." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&family=Orbitron:wght@600;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #070705;
+      --panel: #10100d;
+      --line: rgba(255, 138, 0, 0.35);
+      --orange: #ff8a00;
+      --gold: #ffb347;
+      --text: #fff4e4;
+      --muted: #c9b8a8;
+      --ok: #4ade80;
+      --bad: #ff5c5c;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      color: var(--text);
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      background-color: var(--bg);
+      background-image:
+        radial-gradient(900px 420px at 10% -10%, rgba(255, 138, 0, 0.16), transparent 50%),
+        linear-gradient(rgba(255,138,0,.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,138,0,.05) 1px, transparent 1px),
+        linear-gradient(180deg, #14120e, var(--bg) 45%);
+      background-size: auto, 28px 28px, 28px 28px, auto;
+      overflow: hidden;
+    }
+    body::after {
+      content: "";
+      pointer-events: none;
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(to bottom, rgba(0,0,0,.14) 0 2px, transparent 2px 4px);
+      z-index: 8;
+    }
+    .app {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 12px 12px calc(10px + env(safe-area-inset-bottom));
+    }
+    header, footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      background: rgba(16, 16, 13, 0.92);
+      padding: 8px 12px;
+    }
+    header { border-radius: 12px 12px 0 0; }
+    footer { border-radius: 0 0 12px 12px; font-size: 12px; color: var(--muted); }
+    .brand { font-family: Orbitron, sans-serif; letter-spacing: 0.08em; color: var(--orange); }
+    .live { color: var(--ok); }
+    .live::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+    main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(280px, 0.9fr) 1.3fr;
+      border-left: 1px solid var(--line);
+      border-right: 1px solid var(--line);
+      background: rgba(10, 10, 8, 0.86);
+    }
+    .term, .stage { min-height: 0; display: flex; flex-direction: column; }
+    .term { border-right: 1px solid var(--line); }
+    .pane-title {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      color: var(--gold);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+    }
+    .log {
+      flex: 1;
+      overflow: auto;
+      padding: 12px;
+      font-size: 13px;
+      line-height: 1.55;
+    }
+    .log p { margin: 0 0 8px; }
+    .cmd { color: var(--orange); }
+    .ok { color: var(--ok); }
+    .bad { color: var(--bad); }
+    .muted { color: var(--muted); }
+    .prompt {
+      display: flex;
+      gap: 8px;
+      padding: 8px;
+      border-top: 1px solid var(--line);
+    }
+    .prompt input {
+      flex: 1;
+      min-width: 0;
+      border: 0;
+      background: transparent;
+      color: var(--text);
+      font: inherit;
+      outline: none;
+    }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; border-top: 1px solid var(--line); }
+    .chips button, .pad button, .ghost {
+      border: 1px solid var(--line);
+      background: #1a140d;
+      color: var(--gold);
+      font: inherit;
+      font-size: 12px;
+      padding: 8px 10px;
+      cursor: pointer;
+    }
+    .chips button:hover, .ghost:hover { border-color: var(--orange); color: var(--text); }
+    .stage-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 16px;
+    }
+    .hud { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 12px; font-size: 12px; color: var(--muted); }
+    .dash { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 16px; }
+    .tile {
+      border: 1px solid var(--line);
+      background: linear-gradient(180deg, #1a140d, #100e0a);
+      padding: 12px;
+      min-height: 92px;
+    }
+    .tile b { display: block; color: var(--orange); font-family: Orbitron, sans-serif; margin-bottom: 6px; font-size: 12px; letter-spacing: 0.08em; }
+    .games { display: grid; gap: 10px; }
+    .game {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--line);
+      background: #16120c;
+      color: var(--text);
+      font: inherit;
+      padding: 14px;
+      cursor: pointer;
+    }
+    .game:hover { border-color: var(--orange); }
+    .game strong { display: block; color: var(--orange); font-family: Orbitron, sans-serif; margin-bottom: 4px; }
+    .card-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+    .mcard {
+      aspect-ratio: 1;
+      border: 1px solid var(--line);
+      background: #16120c;
+      color: var(--orange);
+      font-family: Orbitron, sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .mcard.up, .mcard.done { background: #24180c; color: var(--text); }
+    .mcard.done { border-color: var(--ok); color: var(--ok); cursor: default; }
+    canvas {
+      display: block;
+      width: min(100%, 420px);
+      height: auto;
+      margin: 0 auto;
+      border: 1px solid var(--line);
+      background: #080806;
+      image-rendering: pixelated;
+    }
+    .word {
+      font-family: Orbitron, sans-serif;
+      font-size: clamp(28px, 6vw, 56px);
+      color: var(--orange);
+      text-align: center;
+      margin: 28px 0 12px;
+      letter-spacing: 0.06em;
+    }
+    .next { text-align: center; color: var(--muted); min-height: 1.4em; }
+    .bar { height: 8px; background: #24180c; border: 1px solid var(--line); margin: 16px 0; }
+    .bar > i { display: block; height: 100%; width: 100%; background: linear-gradient(90deg, var(--orange), var(--gold)); }
+    .type-in {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--line);
+      background: #100e0a;
+      color: var(--text);
+      font: inherit;
+      font-size: 18px;
+    }
+    .pad {
+      display: grid;
+      grid-template-areas: ". up ." "left down right";
+      grid-template-columns: 56px 56px 56px;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .pad .up { grid-area: up; }
+    .pad .left { grid-area: left; }
+    .pad .down { grid-area: down; }
+    .pad .right { grid-area: right; }
+    .links a { color: var(--gold); }
+    h2 { margin: 0 0 10px; font-family: Orbitron, sans-serif; color: var(--orange); font-size: 18px; }
+    ul { margin: 0; padding-left: 18px; }
+    li { margin-bottom: 6px; }
+    @media (max-width: 820px) {
+      body { overflow: auto; }
+      .app { height: auto; min-height: 100%; }
+      main { grid-template-columns: 1fr; }
+      .term { border-right: 0; border-bottom: 1px solid var(--line); max-height: 38vh; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <strong class="brand">AMANDA.OLV</strong>
+      <span class="live">SYSTEMS ONLINE</span>
+      <span class="muted">RUSSAS / CE</span>
+    </header>
+    <main>
+      <section class="term">
+        <div class="pane-title">TERMINAL</div>
+        <div class="log" id="log" aria-live="polite"></div>
+        <div class="chips">
+          <button type="button" data-cmd="help">help</button>
+          <button type="button" data-cmd="about">about</button>
+          <button type="button" data-cmd="projects">projects</button>
+          <button type="button" data-cmd="play">play</button>
+          <button type="button" data-cmd="contact">contact</button>
+        </div>
+        <form class="prompt" id="prompt-form">
+          <label for="cmd">&gt;</label>
+          <input id="cmd" autocomplete="off" spellcheck="false" placeholder="help, about, play snake..." />
+        </form>
+      </section>
+      <section class="stage">
+        <div class="pane-title" id="stage-title">BOOT</div>
+        <div class="stage-body" id="stage"></div>
+      </section>
+    </main>
+    <footer>
+      <span>Amanda Pereira de Oliveira</span>
+      <span>API + painel + bot · Geek Dungeon</span>
+    </footer>
+  </div>
+  <script>
+    const logEl = document.getElementById("log");
+    const stageEl = document.getElementById("stage");
+    const titleEl = document.getElementById("stage-title");
+    const cmdEl = document.getElementById("cmd");
+    const scores = JSON.parse(localStorage.getItem("amanda.scores") || "{}");
+
+    function saveScores() {
+      localStorage.setItem("amanda.scores", JSON.stringify(scores));
+    }
+
+    function print(html) {
+      const p = document.createElement("p");
+      p.innerHTML = html;
+      logEl.appendChild(p);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function setStage(title, html) {
+      stopGames();
+      titleEl.textContent = title;
+      stageEl.innerHTML = html;
+    }
+
+    const views = {
+      boot() {
+        setStage("BOOT", `
+          <h2>AMANDA.SYS</h2>
+          <p>Estudante de computação em Russas/CE. Software pra loja real da cidade — a <strong>Geek Dungeon</strong>.</p>
+          <p class="muted">Digite <span class="cmd">help</span> ou entra no arcade com <span class="cmd">play</span>.</p>
+          <div class="dash">
+            <div class="tile"><b>PROJETO</b>Geek Dungeon · estoque ao vivo</div>
+            <div class="tile"><b>STACK</b>Python · FastAPI · React · SQL</div>
+            <div class="tile"><b>CANAIS</b>Painel web + API + WhatsApp</div>
+            <div class="tile"><b>STATUS</b>Aberta a estágio / júnior</div>
+          </div>
+        `);
+      },
+      help() {
+        setStage("HELP", `
+          <h2>COMANDOS</h2>
+          <ul>
+            <li><span class="cmd">about</span> — quem sou</li>
+            <li><span class="cmd">projects</span> — Geek Dungeon</li>
+            <li><span class="cmd">skills</span> — stack</li>
+            <li><span class="cmd">play</span> — arcade</li>
+            <li><span class="cmd">play snake</span> · <span class="cmd">play memory</span> · <span class="cmd">play rush</span></li>
+            <li><span class="cmd">contact</span> — onde me achar</li>
+            <li><span class="cmd">clear</span> — limpa o terminal</li>
+          </ul>
+        `);
+      },
+      about() {
+        setStage("ABOUT", `
+          <h2>WHOAMI</h2>
+          <p>Amanda Pereira de Oliveira, Russas/CE.</p>
+          <p>Faço software pra um comércio real: a loja nerd <strong>Geek Dungeon</strong>. API, painel de estoque e bot no WhatsApp no mesmo banco.</p>
+          <p class="muted">Aberta a estágio e vaga júnior. Já entreguei ponta a ponta, não só exercício de sala.</p>
+        `);
+      },
+      projects() {
+        setStage("PROJECTS", `
+          <h2>GEEK DUNGEON</h2>
+          <ul class="links">
+            <li><a href="https://geekdungeon-estoque.web.app" target="_blank" rel="noreferrer">Painel de estoque</a></li>
+            <li><a href="https://geekdungeon-api.onrender.com/docs" target="_blank" rel="noreferrer">API / Swagger</a></li>
+            <li><a href="https://github.com/AmandaOlv/Geekdungeon" target="_blank" rel="noreferrer">Código no GitHub</a></li>
+          </ul>
+          <p class="muted">Python/FastAPI, React, SQL Server, Firebase, Render, WhatsApp.</p>
+        `);
+      },
+      skills() {
+        setStage("SKILLS", `
+          <h2>STACK</h2>
+          <p>Python · FastAPI · React · JavaScript · SQL Server · Firebase · Git · WhatsApp bot</p>
+          <p class="muted">Clean Architecture, CRUD real, máscaras de preço/estoque, deploy HTTPS.</p>
+        `);
+      },
+      contact() {
+        setStage("CONTACT", `
+          <h2>LINK</h2>
+          <ul class="links">
+            <li><a href="https://github.com/AmandaOlv" target="_blank" rel="noreferrer">github.com/AmandaOlv</a></li>
+            <li>Russas, Ceará</li>
+          </ul>
+          <p>Se precisa de alguém que já botou API + front + bot no ar pra um comércio, chama.</p>
+        `);
+      },
+      play() {
+        setStage("ARCADE", `
+          <h2>ARCADE</h2>
+          <p>Três jogos no navegador. Recorde fica neste aparelho.</p>
+          <div class="games">
+            <button class="game" type="button" data-cmd="play snake">
+              <strong>NEON SNAKE</strong>
+              Come a ração laranja. Recorde: ${scores.snake || 0}
+            </button>
+            <button class="game" type="button" data-cmd="play memory">
+              <strong>STACK MEMORY</strong>
+              Vira as cartas da stack. Melhor: ${scores.memory ? scores.memory + " jogadas" : "—"}
+            </button>
+            <button class="game" type="button" data-cmd="play rush">
+              <strong>PROTOCOL RUSH</strong>
+              Digite o comando antes do timeout. Recorde: ${scores.rush || 0}
+            </button>
+          </div>
+        `);
+        stageEl.querySelectorAll("button").forEach((btn) => {
+          btn.addEventListener("click", () => exec(btn.dataset.cmd));
+        });
+      },
+      snake: startSnake,
+      memory: startMemory,
+      rush: startRush,
+    };
+
+    let timers = [];
+    let snakeState = null;
+
+    function stopGames() {
+      timers.forEach((id) => {
+        clearInterval(id);
+        clearTimeout(id);
+      });
+      timers = [];
+      snakeState = null;
+      window.onkeydown = null;
+    }
+
+    function exec(raw) {
+      const line = String(raw || "").trim().toLowerCase();
+      if (!line) return;
+      print(`<span class="cmd">&gt; ${line}</span>`);
+      const [cmd, arg] = line.split(/\s+/);
+      if (cmd === "clear") { logEl.innerHTML = ""; return; }
+      if (cmd === "sudo") { print('<span class="ok">acesso liberado. manda mensagem no GitHub.</span>'); views.contact(); return; }
+      if (cmd === "whoami") { views.about(); return; }
+      if (cmd === "play") {
+        if (!arg) { views.play(); return; }
+        if (arg === "snake") { print("carregando neon snake"); views.snake(); return; }
+        if (arg === "memory") { print("carregando stack memory"); views.memory(); return; }
+        if (arg === "rush" || arg === "type") { print("carregando protocol rush"); views.rush(); return; }
+        print('<span class="bad">jogos: snake, memory, rush</span>');
+        return;
+      }
+      if (views[cmd]) { views[cmd](); return; }
+      print('<span class="bad">comando desconhecido. help</span>');
+    }
+
+    function startSnake() {
+      setStage("NEON SNAKE", `
+        <div class="hud"><span>pontos <b id="s-score">0</b></span><span>recorde <b id="s-best">${scores.snake || 0}</b></span></div>
+        <canvas id="snake" width="360" height="360"></canvas>
+        <div class="pad">
+          <button class="up" type="button" data-d="0,-1">↑</button>
+          <button class="left" type="button" data-d="-1,0">←</button>
+          <button class="down" type="button" data-d="0,1">↓</button>
+          <button class="right" type="button" data-d="1,0">→</button>
+        </div>
+        <p class="muted" style="text-align:center">setas ou toque no pad</p>
+      `);
+      const canvas = document.getElementById("snake");
+      const ctx = canvas.getContext("2d");
+      const cell = 20;
+      const size = 18;
+      const state = {
+        body: [{ x: 8, y: 8 }],
+        dir: { x: 1, y: 0 },
+        next: { x: 1, y: 0 },
+        food: { x: 12, y: 4 },
+        score: 0,
+        dead: false,
+      };
+      snakeState = state;
+
+      function placeFood() {
+        let spot;
+        do {
+          spot = { x: Math.floor(Math.random() * size), y: Math.floor(Math.random() * size) };
+        } while (state.body.some((p) => p.x === spot.x && p.y === spot.y));
+        state.food = spot;
+      }
+
+      function turn(x, y) {
+        if (state.dir.x + x === 0 && state.dir.y + y === 0) return;
+        state.next = { x, y };
+      }
+
+      window.onkeydown = (event) => {
+        const map = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+        if (!map[event.key]) return;
+        event.preventDefault();
+        turn(...map[event.key]);
+      };
+      stageEl.querySelectorAll(".pad button").forEach((btn) => {
+        btn.addEventListener("click", () => turn(...btn.dataset.d.split(",").map(Number)));
+      });
+
+      function tick() {
+        if (!snakeState || state.dead) return;
+        state.dir = state.next;
+        const head = { x: state.body[0].x + state.dir.x, y: state.body[0].y + state.dir.y };
+        if (head.x < 0 || head.y < 0 || head.x >= size || head.y >= size || state.body.some((p) => p.x === head.x && p.y === head.y)) {
+          state.dead = true;
+          print(`<span class="bad">snake game over · ${state.score}</span>`);
+          return;
+        }
+        state.body.unshift(head);
+        if (head.x === state.food.x && head.y === state.food.y) {
+          state.score += 10;
+          document.getElementById("s-score").textContent = state.score;
+          if (state.score > (scores.snake || 0)) {
+            scores.snake = state.score;
+            document.getElementById("s-best").textContent = state.score;
+            saveScores();
+          }
+          placeFood();
+        } else {
+          state.body.pop();
+        }
+        ctx.fillStyle = "#080806";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.strokeStyle = "rgba(255,138,0,0.12)";
+        for (let i = 0; i <= size; i += 1) {
+          ctx.beginPath();
+          ctx.moveTo(i * cell, 0);
+          ctx.lineTo(i * cell, size * cell);
+          ctx.moveTo(0, i * cell);
+          ctx.lineTo(size * cell, i * cell);
+          ctx.stroke();
+        }
+        ctx.fillStyle = "#ff8a00";
+        ctx.fillRect(state.food.x * cell + 4, state.food.y * cell + 4, cell - 8, cell - 8);
+        state.body.forEach((p, i) => {
+          ctx.fillStyle = i === 0 ? "#ffb347" : "#d56d00";
+          ctx.fillRect(p.x * cell + 1, p.y * cell + 1, cell - 2, cell - 2);
+        });
+      }
+      tick();
+      timers.push(setInterval(tick, 130));
+    }
+
+    function startMemory() {
+      const icons = ["PY", "API", "RX", "SQL", "JS", "FIRE", "GIT", "WA"];
+      const deck = [...icons, ...icons].sort(() => Math.random() - 0.5).map((label, i) => ({ id: i, label, up: false, done: false }));
+      let lock = false;
+      let moves = 0;
+      let open = [];
+
+      setStage("STACK MEMORY", `
+        <div class="hud"><span>jogadas <b id="m-moves">0</b></span><span>melhor <b id="m-best">${scores.memory || "—"}</b></span></div>
+        <div class="card-grid">
+          ${deck.map((card) => `<button class="mcard" type="button" data-id="${card.id}">??</button>`).join("")}
+        </div>
+      `);
+
+      function paint(card) {
+        const btn = stageEl.querySelector(`.mcard[data-id="${card.id}"]`);
+        btn.textContent = card.up || card.done ? card.label : "??";
+        btn.className = "mcard" + (card.done ? " done" : card.up ? " up" : "");
+      }
+
+      function flip(id) {
+        const card = deck[id];
+        if (lock || card.up || card.done) return;
+        card.up = true;
+        open.push(card);
+        paint(card);
+        if (open.length < 2) return;
+        moves += 1;
+        document.getElementById("m-moves").textContent = moves;
+        if (open[0].label === open[1].label) {
+          open[0].done = open[1].done = true;
+          open.forEach(paint);
+          open = [];
+          if (deck.every((item) => item.done)) {
+            if (!scores.memory || moves < scores.memory) {
+              scores.memory = moves;
+              document.getElementById("m-best").textContent = moves;
+              saveScores();
+            }
+            print(`<span class="ok">memory clear · ${moves} jogadas</span>`);
+          }
+          return;
+        }
+        lock = true;
+        timers.push(setTimeout(() => {
+          open.forEach((item) => {
+            item.up = false;
+            paint(item);
+          });
+          open = [];
+          lock = false;
+        }, 700));
+      }
+
+      stageEl.querySelectorAll(".mcard").forEach((btn) => {
+        btn.addEventListener("click", () => flip(Number(btn.dataset.id)));
+      });
+    }
+
+    function startRush() {
+      const bag = ["fastapi", "react", "commit", "deploy", "query", "token", "docker", "estoque", "python", "firebase", "endpoint", "git", "sql", "render", "api"];
+      let score = 0;
+      let combo = 1;
+      let word = bag[Math.floor(Math.random() * bag.length)];
+      let next = bag[Math.floor(Math.random() * bag.length)];
+      let left = 100;
+
+      setStage("PROTOCOL RUSH", `
+        <div class="hud"><span>score <b id="r-score">0</b></span><span>combo x<b id="r-combo">1</b></span><span>recorde <b id="r-best">${scores.rush || 0}</b></span></div>
+        <div class="word" id="r-word">${word}</div>
+        <div class="next" id="r-next">próxima: ${next}</div>
+        <div class="bar"><i id="r-bar"></i></div>
+        <input class="type-in" id="r-in" autocomplete="off" spellcheck="false" placeholder="digite a palavra" />
+      `);
+      const input = document.getElementById("r-in");
+      input.focus();
+      input.addEventListener("input", () => {
+        if (input.value.trim().toLowerCase() !== word) return;
+        score += 10 * combo;
+        combo += 1;
+        word = next;
+        next = bag[Math.floor(Math.random() * bag.length)];
+        left = Math.max(35, 100 - score / 8);
+        input.value = "";
+        document.getElementById("r-word").textContent = word;
+        document.getElementById("r-next").textContent = "próxima: " + next;
+        document.getElementById("r-score").textContent = score;
+        document.getElementById("r-combo").textContent = combo;
+        if (score > (scores.rush || 0)) {
+          scores.rush = score;
+          document.getElementById("r-best").textContent = score;
+          saveScores();
+        }
+      });
+
+      timers.push(setInterval(() => {
+        left -= 1.6;
+        const bar = document.getElementById("r-bar");
+        if (!bar) return;
+        bar.style.width = Math.max(0, left) + "%";
+        if (left > 0) return;
+        print(`<span class="bad">protocol timeout · ${score}</span>`);
+        stopGames();
+        document.getElementById("r-word").textContent = "TIMEOUT";
+        input.disabled = true;
+      }, 80));
+    }
+
+    document.getElementById("prompt-form").addEventListener("submit", (event) => {
+      event.preventDefault();
+      exec(cmdEl.value);
+      cmdEl.value = "";
+    });
+    document.querySelectorAll(".chips button").forEach((btn) => {
+      btn.addEventListener("click", () => exec(btn.dataset.cmd));
+    });
+
+    const boot = [
+      "AMANDA.OLV BIOS v2.6",
+      "checking stack ............. <span class='ok'>OK</span>",
+      "mount /projects/geekdungeon <span class='ok'>OK</span>",
+      "whatsapp bot ............... <span class='ok'>LINKED</span>",
+      "ready. type <span class='cmd'>help</span> or <span class='cmd'>play</span>",
+    ];
+    boot.forEach((line, i) => setTimeout(() => print(line), 180 * (i + 1)));
+    views.boot();
+    setTimeout(() => cmdEl.focus(), 200);
+  </script>
+</body>
+</html>

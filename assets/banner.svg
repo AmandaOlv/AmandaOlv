@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="260" viewBox="0 0 1100 260" role="img" aria-label="Amanda.Olv systems online">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0a0a0a"/>
+      <stop offset="1" stop-color="#16100a"/>
+    </linearGradient>
+    <linearGradient id="orange" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff8a00"/>
+      <stop offset="1" stop-color="#ffb347"/>
+    </linearGradient>
+    <pattern id="grid" width="28" height="28" patternUnits="userSpaceOnUse">
+      <path d="M28 0H0V28" fill="none" stroke="#ff8a00" stroke-opacity="0.08"/>
+    </pattern>
+  </defs>
+  <rect width="1100" height="260" fill="url(#bg)"/>
+  <rect width="1100" height="260" fill="url(#grid)"/>
+  <rect x="18" y="18" width="1064" height="224" fill="none" stroke="#ff8a00" stroke-opacity="0.45"/>
+  <text x="48" y="72" fill="#ff8a00" font-family="Consolas, monospace" font-size="18" letter-spacing="4">AMANDA.OLV // RUSSAS-CE</text>
+  <text x="48" y="132" fill="url(#orange)" font-family="Consolas, monospace" font-size="52" font-weight="700">SYSTEMS ONLINE</text>
+  <text x="48" y="176" fill="#c9b8a8" font-family="Consolas, monospace" font-size="18">API · PAINEL · WHATSAPP BOT · GEEK DUNGEON</text>
+  <text x="48" y="214" fill="#4ade80" font-family="Consolas, monospace" font-size="16">&gt; play --open terminal interativo_</text>
+  <circle cx="1038" cy="48" r="7" fill="#4ade80"/>
+  <text x="980" y="53" fill="#4ade80" font-family="Consolas, monospace" font-size="14">LIVE</text>
+</svg>
